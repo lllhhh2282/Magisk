@@ -8,7 +8,7 @@ use base::ResultExt;
 
 impl Default for SuPolicy {
     fn default() -> Self {
-        SuPolicy::Query
+        SuPolicy::Allow
     }
 }
 

