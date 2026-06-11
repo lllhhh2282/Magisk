@@ -2,6 +2,8 @@
 
 [![Downloads](https://img.shields.io/badge/dynamic/json?color=green&label=Downloads&query=totalString&url=https%3A%2F%2Fraw.githubusercontent.com%2Ftopjohnwu%2Fmagisk-files%2Fcount%2Fcount.json&cacheSeconds=1800)](https://raw.githubusercontent.com/topjohnwu/magisk-files/count/count.json)
 
+#### 这是一个去App验证root的自动授权版本，仅在需要时使用！
+
 #### This is not an officially supported Google product
 
 ## Introduction
